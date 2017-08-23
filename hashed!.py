@@ -16,7 +16,7 @@ directory = input('Choose directory: ')
 os.chdir(directory)
 files_names = os.listdir(directory)
 
-#здесь мы удаляем директории из нашего списка, чтобы не вызывать ошибку
+#here we delete dir's from our list to avoid error
 for name in files_names:
 	if os.path.isdir(name):
 		files_names.remove(name)
