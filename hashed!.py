@@ -26,10 +26,6 @@ subdirs = []
 directories.append(input('Choose directory: '))
 files_names = get_files_names(directories[0])
 
-<<<<<<< HEAD
-=======
-#here we delete dir's from our list to avoid error
->>>>>>> 71a05178d28affef79d8e60d2c4ca8ebd6da8fbc
 for name in files_names:
 	if os.path.isdir(name):
 		subdirs.append(name)
