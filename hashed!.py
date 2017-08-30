@@ -11,30 +11,57 @@ def get_files_hash(files_names):
 
 	return files_dict
 
+def get_files_names(dir):
+	os.chdir(dir)
+	list = os.listdir(dir)
+	files_names = []
+	for name in list:
+		files_names.append(os.path.abspath(name))
+		
+	return files_names
 
-directory = input('Choose directory: ')
-os.chdir(directory)
-files_names = os.listdir(directory)
+directories = []
+subdirs = []
 
-#здесь мы удаляем директории из нашего списка, чтобы не вызывать ошибку
+directories.append(input('Choose directory: '))
+files_names = get_files_names(directories[0])
+
+<<<<<<< HEAD
+=======
+#here we delete dir's from our list to avoid error
+>>>>>>> 71a05178d28affef79d8e60d2c4ca8ebd6da8fbc
 for name in files_names:
 	if os.path.isdir(name):
-		files_names.remove(name)
-
-files_hash = get_files_hash(files_names)
+		subdirs.append(name)
+else:
+	if len(subdirs) > 0:
+		if input('Check subfolders?\nY/N? ') == 'Y':
+			directories.extend(subdirs)
 
 all_hashes = []
 need_remove_names = []
-for name, file_hash in files_hash.items():
-	if file_hash not in all_hashes:
-		all_hashes.append(file_hash)
-		continue
 
-	need_remove_names.append(name)
-	print('Identical!\n{}'.format(name))
+for dir in directories:
+	files_names = get_files_names(dir)
+	
+	for name in files_names:
+		if os.path.isdir(name):
+			files_names.remove(name)
+	
+	files_hash = get_files_hash(files_names)
+
+	for name, file_hash in files_hash.items():
+		if file_hash not in all_hashes:
+			all_hashes.append(file_hash)
+			continue
+
+		need_remove_names.append(name)
+
 
 if len(need_remove_names) > 0:
-	if input('Delete files? Y/N?') == 'Y':
+	for name in need_remove_names:
+		print('Identical >> {}'.format(name))
+	if input('Delete files?\nY/N? ') == 'Y':
 		for name in need_remove_names:
 			os.remove(name)
 else:
