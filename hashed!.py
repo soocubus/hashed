@@ -5,6 +5,8 @@ import hashlib
 def get_files_hash(files_names):
 	files_dict = {}
 	for name in files_names:
+		if os.path.isdir(name):
+			continue
 		with open(name, 'rb') as f:
 			files_dict[name] = hashlib.md5(f.read()).hexdigest()
 			print('Proceed: {}'.format(name))
@@ -17,7 +19,7 @@ def get_files_names(dir):
 	files_names = []
 	for name in list:
 		files_names.append(os.path.abspath(name))
-		
+
 	return files_names
 
 directories = []
@@ -39,11 +41,7 @@ need_remove_names = []
 
 for dir in directories:
 	files_names = get_files_names(dir)
-	
-	for name in files_names:
-		if os.path.isdir(name):
-			files_names.remove(name)
-	
+
 	files_hash = get_files_hash(files_names)
 
 	for name, file_hash in files_hash.items():
