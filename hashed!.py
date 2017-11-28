@@ -51,7 +51,6 @@ for dir in directories:
 
 		need_remove_names.append(name)
 
-
 if len(need_remove_names) > 0:
 	for name in need_remove_names:
 		print('Identical >> {}'.format(name))
