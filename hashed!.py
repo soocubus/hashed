@@ -2,17 +2,6 @@ import os
 import hashlib
 
 
-def get_files_hash(files_names):
-	files_dict = {}
-	for name in files_names:
-		if os.path.isdir(name):
-			continue
-		with open(name, 'rb') as f:
-			files_dict[name] = hashlib.md5(f.read()).hexdigest()
-			print('Proceed: {}'.format(name))
-
-	return files_dict
-
 def get_files_names(dir):
 	os.chdir(dir)
 	list = os.listdir(dir)
@@ -22,10 +11,22 @@ def get_files_names(dir):
 
 	return files_names
 
+def get_files_hash(files_names):
+	files_dict = {}
+	for name in files_names:
+		if os.path.isdir(name):
+			continue
+		with open(name, 'rb') as f:
+			files_dict[name] = hashlib.blake2b(f.read()).hexdigest()
+			print('Proceed: {}'.format(name))
+
+	return files_dict
+
+
 directories = []
 subdirs = []
 
-directories.append(input('Choose directory: '))
+directories.append(input('Choose directory: ')) #здесь мы берем директорию, в которой идет поиск
 files_names = get_files_names(directories[0])
 
 for name in files_names:
@@ -41,7 +42,6 @@ need_remove_names = []
 
 for dir in directories:
 	files_names = get_files_names(dir)
-
 	files_hash = get_files_hash(files_names)
 
 	for name, file_hash in files_hash.items():
