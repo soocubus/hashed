@@ -1,61 +1,175 @@
-import os
-import hashlib
+from os import scandir as scandir
+from os import chdir as chdir
+from os import stat as stat
+
+from os.path import isfile as isfile
+from os.path import isdir as isdir
+from os.path import basename as basename
+from os.path import dirname as dirname
+from os.path import split as split
+
+from hashlib import blake2b as blake2b
+
+# notice: not from core libs
+from send2trash import send2trash
 
 
-def get_files_names(dir):
-	os.chdir(dir)
-	list = os.listdir(dir)
-	files_names = []
-	for name in list:
-		files_names.append(os.path.abspath(name))
+def only_files(items):
+	return list(filter(lambda name: isfile(name), items))
 
-	return files_names
+def only_folders(items):
+	return list(filter(lambda name: isdir(name), items))
 
-def get_files_hash(files_names):
-	files_dict = {}
-	for name in files_names:
-		if os.path.isdir(name):
-			continue
-		with open(name, 'rb') as f:
-			files_dict[name] = hashlib.blake2b(f.read()).hexdigest()
-			print('Proceed: {}'.format(name))
+def get_path(scan_items):
+	return list(map(lambda name: name.path, scan_items))
 
-	return files_dict
+def sortByTime(items):
+	return sorted(items, key=lambda item: stat(item).st_mtime)
+
+def ignoreBigFiles(items): # less than 1GB
+	return list(filter(lambda item: stat(item).st_size <= 1073741824, items))
+
+def getKeyByValue(value, dictionary):
+	index = list(dictionary.values()).index(value)
+	return list(dictionary.keys())[index]
+
+def get_files(root_dir):
+	items = scandir(root_dir)
+	items = get_path(items)
+	items = sortByTime(items)
+	items = ignoreBigFiles(items)
+
+	files = only_files(items)
+	if input('Check subfolders? Y/N\n') == 'Y':
+		dirs = only_folders(items)
+		
+		while dirs:
+			items = scandir(dirs[0])
+			items = get_path(items)
+			items = sortByTime(items)
+			items = ignoreBigFiles(items)
+
+			files = files + only_files(items)
+			dirs = dirs + only_folders(items)
+
+			dirs.pop(0)
+
+	return files
+
+def get_hash(files):
+	hash_dict = {}
+	dir = ""
+	i = 1
+	total = len(files)
+	for path in files:
+		if dir != dirname(path):
+			dir = dirname(path)
+			chdir(dir)
+
+		with open(path, 'rb') as f:
+			hash = blake2b(f.read()).hexdigest()
+			hash_dict[path] = hash
+		
+		print(f"\rDone: {i}/{total}", end="")
+			
+		i = i + 1
+
+	return hash_dict
+
+def find_collisions(hash_dict):
+	checked_hashes = []
+	collisions = {}
+	for path, hash in hash_dict.items():
+		if hash not in checked_hashes:
+			checked_hashes.append(hash)
+		else:
+			origin = getKeyByValue(hash, hash_dict)
+			collisions[path] = { 'origin': origin, 'isDeleted': False }
+
+	return collisions
+
+def decide(collisions):
+	deleteList = []
+	print("You can decide by your own or by oldest time of creation")
+	while True:
+		decision = input("Which method you want?\n1. Manual selection\n2. Delete the newer ones\n")
+		
+		if decision not in ['1','2']:
+			print('You typed it wrong, try again...')
+		else:
+			break
+
+	if decision == '1':
+		for path in collisions.keys():
+			origin = collisions[path]['origin']
+			isDeleted = collisions[path]['isDeleted']
+
+			if isDeleted:
+				continue
+
+			print(f'1. {path}\n2. {origin}')
+
+			while True:
+				decision = input('Which one you want to save? ')
+				if decision not in ['1','2']:
+					print('You typed it wrong, try again...')
+				elif decision == '1':
+					deleteList.append(origin)
+					break
+				elif decision == '2':
+					deleteList.append(path)
+					break
+			
+			collisions[path]['isDeleted'] = True
+			print('\n')
+
+	elif decision == '2':
+		for path in collisions.keys():
+			origin = collisions[path]['origin']
+			isDeleted = collisions[path]['isDeleted']
+
+			if isDeleted:
+				continue
+
+			deleteList.append(path)
+			collisions[path]['isDeleted'] = True
+			print(f'{path} deleted')
+
+	return deleteList
+
+def trashTime(deleteList):
+	'''
+	We do this just because send2trash can't send by path,
+	only by name in current working directory
+	'''
+	for path in deleteList:
+		dir = split(path)[0]
+		name = split(path)[1]
+
+		chdir(dir)
+		send2trash(name)
 
 
-directories = []
-subdirs = []
+if __name__ == '__main__':
 
-directories.append(input('Choose directory: ')) #здесь мы берем директорию, в которой идет поиск
-files_names = get_files_names(directories[0])
+	root_dir = input('Input path to directory of search: ')
+	chdir(root_dir)
 
-for name in files_names:
-	if os.path.isdir(name):
-		subdirs.append(name)
-else:
-	if len(subdirs) > 0:
-		if input('Check subfolders?\nY/N? ') == 'Y':
-			directories.extend(subdirs)
+	print('Search started')
+	all_files = get_files(root_dir)
+	print('Search done')
 
-all_hashes = []
-need_remove_names = []
+	print('Hash calculation started')
+	all_files = get_hash(all_files)
+	print('Hash calculation done')
 
-for dir in directories:
-	files_names = get_files_names(dir)
-	files_hash = get_files_hash(files_names)
+	print('Collisions processing...')
+	collisions = find_collisions(all_files)
 
-	for name, file_hash in files_hash.items():
-		if file_hash not in all_hashes:
-			all_hashes.append(file_hash)
-			continue
-
-		need_remove_names.append(name)
-
-if len(need_remove_names) > 0:
-	for name in need_remove_names:
-		print('Identical >> {}'.format(name))
-	if input('Delete files?\nY/N? ') == 'Y':
-		for name in need_remove_names:
-			os.remove(name)
-else:
-	print('No matches.')
+	if len(collisions) > 0:
+		print('Found: ' + str(len(collisions)) + ' collisions')
+		deleteList = decide(collisions)
+		trashTime(deleteList)
+		print('Files has been sent to trash bin.')
+	else:
+		print('No collisions.')
