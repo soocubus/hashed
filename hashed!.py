@@ -1,6 +1,7 @@
 from os import scandir as scandir
 from os import chdir as chdir
 from os import stat as stat
+from os import getcwd as getcwd
 
 from os.path import isfile as isfile
 from os.path import isdir as isdir
@@ -10,8 +11,11 @@ from os.path import split as split
 
 from hashlib import blake2b as blake2b
 
-# notice: not from core libs
-from send2trash import send2trash
+try:
+	# notice: not from core libs
+	from send2trash import send2trash
+except ImportError:
+	print('Try: pip install send2trash')
 
 
 def only_files(items):
@@ -145,8 +149,10 @@ def trashTime(deleteList):
 	for path in deleteList:
 		dir = split(path)[0]
 		name = split(path)[1]
+		
+		if getcwd() != dir:
+			chdir(dir)
 
-		chdir(dir)
 		send2trash(name)
 
 
